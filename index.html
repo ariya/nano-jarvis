@@ -53,7 +53,7 @@
                 }
             }
 
-            function ask(question) {
+            function ask(question, handler) {
                 message('human', question);
                 $('prompt').blur();
                 const url = '/chat/q?' + encodeURIComponent(question);
@@ -80,6 +80,7 @@
                         unmessage('loader');
                         message('assistant', answer)
                         setTimeout(focusInput, 0);
+                        handler && handler(answer);
                     }).catch(error => {
                         message('panic', error);
                     });
@@ -100,6 +101,30 @@
             setTimeout(() => {
                 message('assistant', 'Hi, this is Nano Jarvis!');
             }, 100);
+
+            const tests = [
+                'Who is the CEO of Google?',
+                'What is a dwarf planet?',
+                'Give an example!',
+                'List all terrestrial planets',
+                'Which is the closest to the Sun?',
+                'Which planet known as the red one?',
+                'When was solar system formed?',
+                'What materials compose the gas giants?',
+                'What about the ice giants',
+                'Explain the heliopause',
+                'When did Voyager 2 enter the interstellar space?',
+                'How about Voyager 1?'
+            ];
+
+            function verify() {
+                const question = tests.shift();
+                if (question && question.length > 0) {
+                    ask(question, () => setTimeout(verify, 300));
+                }
+            }
+
+            // setTimeout(verify, 1000);
         });
     </script>
 
