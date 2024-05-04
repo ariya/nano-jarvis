@@ -11,7 +11,7 @@ const chat = async (messages) => {
     const url = `${LLM_API_BASE_URL}/chat/completions`;
     const auth = LLM_API_KEY ? { 'Authorization': `Bearer ${LLM_API_KEY}` } : {};
     const model = LLM_CHAT_MODEL || 'gpt-3.5-turbo';
-    const max_tokens = 200;
+    const max_tokens = 400;
     const temperature = 0;
     const response = await fetch(url, {
         method: 'POST',
