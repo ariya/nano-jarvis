@@ -43,7 +43,7 @@ export LLM_API_BASE_URL=http://localhost:3928/v1
 
 To use [OpenAI GPT model](https://platform.openai.com/docs), configure the environment variable `OPENAI_API_KEY` with your API key:
 ```bash
-export LM_API_BASE_URL=https://api.openai.com/v1
+export LLM_API_BASE_URL=https://api.openai.com/v1
 export OPENAI_API_KEY="sk-yourownapikey"
 ```
 
