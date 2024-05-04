@@ -38,6 +38,16 @@
                 return el;
             }
 
+            function stream(type, text) {
+                const selectors = document.querySelectorAll(`.speech-bubble-${type}`);
+                const el = selectors[selectors.length - 1] || message(type, text);
+                el.innerText = text || '';
+                setTimeout(() => {
+                    el.scrollIntoView();
+                }, 0);
+                return el;
+            }
+
             function unmessage(type) {
                 const el = document.querySelector(`.speech-${type}`);
                 el && el.remove();
@@ -53,38 +63,40 @@
                 }
             }
 
-            function ask(question, handler) {
+            async function ask(question, handler) {
                 message('human', question);
                 $('prompt').blur();
-                const url = '/chat/q?' + encodeURIComponent(question);
-                fetch(url).then(response => {
-                    if (response.status !== 200) {
-                        throw new Error('Unable to get an answer!')
-                    }
-                    return response.text();
-                }).then(query => {
-                    const el = message('loader');
-                    el.innerHTML = '<div class=loader></div>'
-                    setTimeout(answer, 0);
-                }).catch(error => {
-                    message('panic', error);
-                });
+                const url = '/chat?' + encodeURIComponent(question);
+                const el = message('loader');
+                el.innerHTML = '<div class=loader></div>';
+                setTimeout(get, 100);
 
-                function answer() {
-                    fetch('/chat/a').then(response => {
-                        if (response.status !== 200) {
-                            throw new Error('Unable to get an answer!')
+                async function get() {
+                    const response = await fetch(url);
+                    message('assistant');
+                    let answer = '';
+                    try {
+                        const reader = response.body.getReader();
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            unmessage('loader');
+                            if (done) {
+                                break;
+                            }
+                            const text = new TextDecoder().decode(value, { stream: true });
+                            answer += text;
+                            stream('assistant', answer);
                         }
-                        return response.text();
-                    }).then(answer => {
+                    } catch (e) {
+                        message('panic', `Something is wrong: ${e.toString()}`);
+                    } finally {
                         unmessage('loader');
-                        message('assistant', answer)
-                        setTimeout(focusInput, 0);
                         handler && handler(answer);
-                    }).catch(error => {
-                        message('panic', error);
-                    });
+                        setTimeout(focusInput, 0);
+                    }
                 }
+
+
             }
 
             $('prompt').addEventListener('keydown', function handleKeyInput(event) {
@@ -117,10 +129,10 @@
                 'How about Voyager 1?'
             ];
 
-            function verify() {
+            async function verify() {
                 const question = tests.shift();
                 if (question && question.length > 0) {
-                    ask(question, () => setTimeout(verify, 300));
+                    await ask(question, () => setTimeout(verify, 300));
                 }
             }
 
