@@ -30,7 +30,26 @@ const chat = async (messages) => {
     return content.trim();
 }
 
-const SYSTEM_PROMPT = 'Answer the user concisely and politely.';
+const REPLY_PROMPT = `You are a helpful answering assistant.
+Your task is to reply and respond to the user politely and concisely.
+Answer in plain text (concisely, maximum 3 sentences) and not in Markdown format.`;
+
+const reply = async (context) => {
+    const { inquiry, history } = context;
+
+    const messages = [];
+    messages.push({ role: 'system', content: REPLY_PROMPT });
+    const relevant = history.slice(-4);
+    relevant.forEach(msg => {
+        const { inquiry, answer } = msg;
+        messages.push({ role: 'user', content: inquiry });
+        messages.push({ role: 'assistant', content: answer });
+    });
+    messages.push({ role: 'user', content: inquiry });
+    const answer = await chat(messages);
+
+    return { answer, ...context };
+}
 
 (async () => {
     if (!LLM_API_BASE_URL) {
@@ -39,7 +58,8 @@ const SYSTEM_PROMPT = 'Answer the user concisely and politely.';
     }
     console.log(`Using LLM at ${LLM_API_BASE_URL} (model: ${LLM_CHAT_MODEL || 'default'}).`);
 
-    const messages = [];
+    const history = [];
+    let inquiry;
 
     const server = http.createServer(async (request, response) => {
         const { url } = request;
@@ -51,22 +71,20 @@ const SYSTEM_PROMPT = 'Answer the user concisely and politely.';
         } else if (url.startsWith('/chat/q')) {
             const parsedUrl = new URL(`http://localhost/${url}`);
             const { search } = parsedUrl;
-            const query = decodeURIComponent(search.substring(1));
-            console.log('    Human:', query);
-            if (messages.length === 0) {
-                messages.push({ role: 'system', content: SYSTEM_PROMPT });
-            }
-            messages.push({ role: 'user', content: query });
-            response.writeHead(200).end(query);
+            inquiry = decodeURIComponent(search.substring(1));
+            console.log('    Human:', inquiry);
+            response.writeHead(200).end(inquiry);
         } else if (url.startsWith('/chat/a')) {
+            const context = { inquiry, history };
             const start = Date.now();
-            const answer = await chat(messages);
-            const elapsed = Date.now() - start;
+            const result = await reply(context);
+            const duration = Date.now() - start;
+            const { answer } = result;
             response.writeHead(200).end(answer);
             console.log('Assistant:', answer);
-            console.log('       (in', elapsed, 'ms)');
+            console.log('       (in', duration, 'ms)');
             console.log();
-            messages.push({ role: 'assistant', content: answer });
+            history.push({ inquiry, answer, duration });
         } else {
             console.error(`${url} is 404!`)
             response.writeHead(404);
